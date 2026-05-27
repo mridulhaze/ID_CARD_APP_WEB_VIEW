@@ -1,4 +1,10 @@
 # ID Card App (Web View)
+<img width="1351" height="577" alt="image" src="https://github.com/user-attachments/assets/b466a2cf-0a6a-418e-88fb-ee0e561d7eef" />
+<img width="1365" height="593" alt="image" src="https://github.com/user-attachments/assets/d03fca55-857a-45c9-8097-f8c83a55a28d" />
+<img width="1339" height="587" alt="image" src="https://github.com/user-attachments/assets/6979ecde-1140-43f8-b2ff-ad6dfa5841a6" />
+
+
+
 
 Simple Flask-based ID card management web app that uses SQL Server for storage.
 
