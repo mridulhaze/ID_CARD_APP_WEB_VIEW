@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% block title %}{% if action=='new' %}New{% else %}Edit{% endif %} ID Card{% endblock %}
+{% block page_title %}{% if action=='new' %}New ID Card{% else %}Edit: {{ card[2] }}{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.form-grid .full-width { grid-column: 1 / -1; }
+.photo-preview-wrap {
+  display: flex; align-items: center; gap: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-surface-offset);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.photo-preview-wrap:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-highlight);
+}
+.photo-preview-img {
+  width: 80px; height: 96px;
+  border-radius: var(--radius-md);
+  object-fit: cover; object-position: top center;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.photo-placeholder {
+  width: 80px; height: 96px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-highlight);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-primary); flex-shrink: 0;
+}
+.section-divider {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-2) 0;
+}
+.section-divider span {
+  font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--color-text-muted); white-space: nowrap;
+}
+.section-divider::before,
+.section-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--color-divider);
+}
+select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7974' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-8) !important;
+}
+.custom-toggle-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  margin-top: var(--space-1);
+  user-select: none;
+}
+.custom-toggle-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+</style>
+
+<div class="card" style="max-width: var(--content-default); margin: 0 auto;">
+  <div class="card-header">
+    <h2 style="font-size:var(--text-lg);font-weight:700">
+      {% if action == 'new' %}
+        <i data-lucide="credit-card" width="18" height="18" style="vertical-align:middle;margin-right:6px"></i>
+        Create New ID Card
+      {% else %}
+        <i data-lucide="pencil" width="18" height="18" style="vertical-align:middle;margin-right:6px"></i>
+        Edit: {{ card[2] }}
+      {% endif %}
+    </h2>
+  </div>
+
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data" id="cardForm">
+
+      <div class="form-grid">
+
+        {# ── PHOTO ── #}
+        <div class="full-width">
+          <label class="form-label">
+            <i data-lucide="camera" width="14" height="14" style="vertical-align:middle;margin-right:4px"></i>
+            Photo
+          </label>
+          <div class="photo-preview-wrap" onclick="document.getElementById('photoFileInput').click()">
+            {% if card and card[11] %}
+              <img id="photoPreview" class="photo-preview-img"
+                   src="{{ card[11] }}" alt="Photo preview">
+            {% else %}
+              <div class="photo-placeholder" id="photoPlaceholder">
+                <i data-lucide="user" width="32" height="32"></i>
+              </div>
+              <img id="photoPreview" class="photo-preview-img" src="" alt="" style="display:none">
+            {% endif %}
+            <div>
+              <div style="font-weight:600;font-size:var(--text-sm);margin-bottom:var(--space-1)">
+                Click to upload photo
+              </div>
+              <div style="font-size:var(--text-xs);color:var(--color-text-muted)">
+                JPG, PNG, GIF, WEBP — max 5 MB
+              </div>
+              <div style="font-size:var(--text-xs);color:var(--color-text-faint);margin-top:var(--space-1)">
+                Or paste a URL in the field below
+              </div>
+            </div>
+          </div>
+          <input type="file" id="photoFileInput" name="photo_file" accept="image/*" style="display:none">
+          <input type="text" name="photo_url" class="form-control"
+                 placeholder="https://... (optional URL fallback)"
+                 value="{{ card[11] if card and card[11] and not card[11].startswith('data:') else '' }}"
+                 style="margin-top:var(--space-2)">
+        </div>
+
+        {# ── SECTION: Identity ── #}
+        <div class="section-divider"><span>Identity</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="employee_id">
+            Employee / P.F. No. <span style="color:var(--color-error)">*</span>
+          </label>
+          <input type="text" id="employee_id" name="employee_id" class="form-control"
+                 placeholder="e.g. EMP-001"
+                 value="{{ card[1] if card else '' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="full_name">
+            Full Name <span style="color:var(--color-error)">*</span>
+          </label>
+          <input type="text" id="full_name" name="full_name" class="form-control"
+                 placeholder="e.g. Mridul Roy"
+                 value="{{ card[2] if card else '' }}" required>
+        </div>
+
+        {# ── SECTION: Role ── #}
+        <div class="section-divider"><span>Role</span></div>
+
+        {# ── Designation DROPDOWN ── #}
+        <div class="form-group">
+          <label class="form-label" for="designation">Designation</label>
+          <select id="designation" name="designation" class="form-control">
+            <option value="">— Select Designation —</option>
+            {% for row in designations %}
+              <option value="{{ row[1] }}"
+                {% if card and card[3] == row[1] %}selected{% endif %}>
+                {{ row[1] }}
+              </option>
+            {% endfor %}
+            {# Keep existing value if it's not in the current list #}
+            {% if card and card[3] and card[3] not in (designations | map(attribute=1) | list) %}
+              <option value="{{ card[3] }}" selected>{{ card[3] }} (existing)</option>
+            {% endif %}
+          </select>
+          <label class="custom-toggle-label">
+            <input type="checkbox" id="customDesigToggle"> Enter custom designation
+          </label>
+          <input type="text" id="customDesig" name="designation_custom" class="form-control"
+                 placeholder="Type custom designation…"
+                 style="display:none;margin-top:var(--space-2)">
+        </div>
+
+        {# ── Department DROPDOWN ── #}
+        <div class="form-group">
+          <label class="form-label" for="department">Department</label>
+          <select id="department" name="department" class="form-control">
+            <option value="">— Select Department —</option>
+            {% for row in departments %}
+              <option value="{{ row[1] }}"
+                {% if card and card[4] == row[1] %}selected{% endif %}>
+                {{ row[1] }}
+              </option>
+            {% endfor %}
+            {# Keep existing value if it's not in the current list #}
+            {% if card and card[4] and card[4] not in (departments | map(attribute=1) | list) %}
+              <option value="{{ card[4] }}" selected>{{ card[4] }} (existing)</option>
+            {% endif %}
+          </select>
+          <label class="custom-toggle-label">
+            <input type="checkbox" id="customDeptToggle"> Enter custom department
+          </label>
+          <input type="text" id="customDept" name="department_custom" class="form-control"
+                 placeholder="Type custom department…"
+                 style="display:none;margin-top:var(--space-2)">
+        </div>
+
+        {# ── SECTION: Contact ── #}
+        <div class="section-divider"><span>Contact</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input type="email" id="email" name="email" class="form-control"
+                 placeholder="name@example.com"
+                 value="{{ card[5] if card else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="phone">
+            Mobile No.
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted);font-weight:400">
+              (used as login username)
+            </span>
+          </label>
+          <input type="text" id="phone" name="phone" class="form-control"
+                 placeholder="e.g. 01700-000000"
+                 value="{{ card[6] if card else '' }}">
+        </div>
+
+        {# ── SECTION: Personal ── #}
+        <div class="section-divider"><span>Personal</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="blood_group">Blood Group</label>
+          <select id="blood_group" name="blood_group" class="form-control">
+            <option value="">— Select —</option>
+            {% for bg in ['A+','A-','B+','B-','AB+','AB-','O+','O-'] %}
+              <option value="{{ bg }}"
+                {% if card and card[7] == bg %}selected{% endif %}>
+                {{ bg }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="date_of_birth">Date of Birth</label>
+          <input type="date" id="date_of_birth" name="date_of_birth" class="form-control"
+                 value="{{ card[8].strftime('%Y-%m-%d') if card and card[8] else '' }}">
+        </div>
+
+        {# ── SECTION: Service ── #}
+        <div class="section-divider"><span>Service</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="join_date">PL Date / Valid Upto</label>
+          <input type="date" id="join_date" name="join_date" class="form-control"
+                 value="{{ card[9].strftime('%Y-%m-%d') if card and card[9] else '' }}">
+        </div>
+
+        {% if action == 'edit' %}
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <label style="display:flex;align-items:center;gap:var(--space-2);
+                        padding:var(--space-3);background:var(--color-surface-offset);
+                        border-radius:var(--radius-md);cursor:pointer">
+            <input type="checkbox" name="is_active" value="1"
+                   {% if card and card[12] %}checked{% endif %}
+                   style="width:auto;margin:0;accent-color:var(--color-primary)">
+            <span style="font-size:var(--text-sm)">Card is <strong>Active</strong></span>
+          </label>
+        </div>
+        {% endif %}
+
+        {# ── SECTION: Address ── #}
+        <div class="section-divider"><span>Address</span></div>
+
+        <div class="form-group full-width">
+          <label class="form-label" for="address">Present Address</label>
+          <textarea id="address" name="address" class="form-control" rows="3"
+                    placeholder="Flat no, House no, Road, Area, City…"
+                    >{{ card[10] if card else '' }}</textarea>
+        </div>
+
+        {# ── Login credentials info box (new card only) ── #}
+        {% if action == 'new' %}
+        <div class="full-width">
+          <div class="alert alert-info" style="margin-bottom:0">
+            <i data-lucide="info" width="16" height="16"></i>
+            <span>
+              A login account will be created automatically.
+              <strong>Username</strong> = Mobile No. &nbsp;|&nbsp;
+              <strong>Password</strong> = Employee / P.F. No.
+            </span>
+          </div>
+        </div>
+        {% endif %}
+
+        {# ── ACTION BUTTONS ── #}
+        <div class="full-width"
+             style="display:flex;gap:var(--space-3);
+                    padding-top:var(--space-4);
+                    border-top:1px solid var(--color-divider)">
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="save" width="15" height="15"></i>
+            {% if action == 'new' %}Create Card{% else %}Save Changes{% endif %}
+          </button>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">
+            <i data-lucide="x" width="15" height="15"></i> Cancel
+          </a>
+        </div>
+
+      </div>{# /form-grid #}
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Photo file preview ─────────────────────────────────────────────────────
+document.getElementById('photoFileInput').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const preview     = document.getElementById('photoPreview');
+    const placeholder = document.getElementById('photoPlaceholder');
+    preview.src           = e.target.result;
+    preview.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── Custom designation toggle ──────────────────────────────────────────────
+const customDesigToggle = document.getElementById('customDesigToggle');
+const customDesigInput  = document.getElementById('customDesig');
+const desigSelect       = document.getElementById('designation');
+
+customDesigToggle.addEventListener('change', function () {
+  if (this.checked) {
+    customDesigInput.style.display = 'block';
+    customDesigInput.required      = true;
+    desigSelect.disabled           = true;
+    desigSelect.name               = '';           // exclude from POST
+    customDesigInput.name          = 'designation';
+  } else {
+    customDesigInput.style.display = 'none';
+    customDesigInput.required      = false;
+    desigSelect.disabled           = false;
+    desigSelect.name               = 'designation';
+    customDesigInput.name          = 'designation_custom';
+  }
+});
+
+// ── Custom department toggle ───────────────────────────────────────────────
+const customDeptToggle = document.getElementById('customDeptToggle');
+const customDeptInput  = document.getElementById('customDept');
+const deptSelect       = document.getElementById('department');
+
+customDeptToggle.addEventListener('change', function () {
+  if (this.checked) {
+    customDeptInput.style.display = 'block';
+    customDeptInput.required      = true;
+    deptSelect.disabled           = true;
+    deptSelect.name               = '';
+    customDeptInput.name          = 'department';
+  } else {
+    customDeptInput.style.display = 'none';
+    customDeptInput.required      = false;
+    deptSelect.disabled           = false;
+    deptSelect.name               = 'department';
+    customDeptInput.name          = 'department_custom';
+  }
+});
+</script>
+{% endblock %}

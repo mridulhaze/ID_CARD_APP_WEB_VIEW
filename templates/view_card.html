@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+{% block title %}{{ card[2] }} — ID Card{% endblock %}
+{% block page_title %}ID Card Preview{% endblock %}
+
+{% block content %}
+
+{# ── Date macros ── #}
+{% macro fmt_date(val) %}{%- if val is none or val == '' %}—{%- else %}{%- set s = val | string %}{{ s[8:10] }}-{{ s[5:7] }}-{{ s[0:4] }}{%- endif %}{% endmacro %}
+{% macro fmt_datetime(val) %}{%- if val is none or val == '' %}—{%- else %}{%- set s = val | string %}{%- set months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] %}{{ '%02d'|format(s[8:10]|int) }} {{ months[s[5:7]|int] }} {{ s[0:4] }}, {{ s[11:16] if s|length > 10 else '00:00' }}{%- endif %}{% endmacro %}
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;900&display=swap');
+
+/* ── Action bar ─────────────────────────────── */
+.action-bar{display:flex;align-items:center;gap:10px;margin-bottom:28px;flex-wrap:wrap}
+.export-btn-group{display:flex;border:1px solid var(--color-border);border-radius:8px;overflow:hidden}
+.export-btn-group .btn{border-radius:0;border:none;border-right:1px solid var(--color-border);font-size:13px}
+.export-btn-group .btn:last-child{border-right:none}
+
+/* ── Preview outer ──────────────────────────── */
+.preview-outer{display:flex;justify-content:center;margin-bottom:32px;overflow-x:auto;padding:4px 0 12px}
+
+/* ── Wrapper: both cards same height ────────── */
+.nu-id-wrapper{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:stretch;   /* KEY: both cards same height */
+}
+
+/* ── Card shell ─────────────────────────────── */
+.nu-card{
+  width:290px;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 2px 6px rgba(0,0,0,.15),0 10px 32px rgba(0,0,0,.20);
+  border:1.5px solid #b0bee0;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+}
+
+/* ── Shared header (blue) ───────────────────── */
+.nu-header{
+/* ──  background:linear-gradient(135deg,#1a3fa5 0%,#1e55c4 100%); ───────────────────── */
+  background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+  padding:10px 12px 10px 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+.nu-header-logo{
+  width:52px;height:52px;flex-shrink:0;
+  object-fit:contain;background:#fff;
+  border-radius:50%;padding:3px;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.nu-header-text{flex:1;text-align:center}
+.nu-header-bangla{
+  font-family:'Noto Sans Bengali',Arial,sans-serif;
+  font-size:17px;
+  font-weight:900;
+  color:#000; /* এখানে ঠিক করুন */
+  line-height:1.2;
+  text-shadow:none; /* shadow সরিয়ে দিলে আরও clear হবে */
+}
+
+.nu-header-english{
+  font-size:9px;
+  color:#000; /* এখানেও ঠিক করুন */
+  font-weight:700;
+  letter-spacing:1px;
+  margin-top:3px;
+  text-transform:uppercase;
+}
+/* ════════════════════════════════════════════
+   FRONT CARD LAYOUT
+   ┌──────────────────┐
+   │  blue header     │
+   ├──────────────────┤
+   │  white gap       │  ← .nu-front-white-top (white, ~16px)
+   ├────┬─────────┬───┤
+   │blue│  PHOTO  │blue│  ← .nu-photo-row (blue sides, white photo bg)
+   ├────┴─────────┴───┤
+   │  white area      │  ← .nu-front-white-bottom (name/desig on white)
+   ├──────────────────┤
+   │  white footer    │  ← sig + QR + sig
+   └──────────────────┘
+════════════════════════════════════════════ */
+
+/* small white spacer above photo row */
+.nu-front-white-top{
+  background:#fff;
+  height:18px;
+  flex-shrink:0;
+}
+
+/* photo row: full-width, blue sides, photo centred */
+.nu-photo-row{
+  background:linear-gradient(135deg,#1a3fa5 0%,#1e55c4 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px 0;          /* top/bottom blue padding */
+  flex-shrink:0;
+}
+.nu-photo-frame{
+  width:110px;height:130px;
+  border:3px solid #fff;
+  background:#c8d8f4;
+  overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 12px rgba(0,0,0,.35);
+  flex-shrink:0;
+}
+.nu-photo-frame img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.nu-photo-initial{font-size:3.5rem;font-weight:900;color:#1e4da1}
+
+/* white area below photo: name / designation */
+.nu-front-white-bottom{
+  background:#fff;
+  flex:1;                  /* takes remaining space so footer stays at bottom */
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:14px 12px 8px;
+  gap:4px;
+}
+.nu-front-name{
+  font-size:15.5px;font-weight:900;color:#111;
+  text-align:center;line-height:1.2;
+}
+.nu-front-designation{
+  font-size:11px;color:#1a3fa5;font-weight:700;
+  text-align:center;
+}
+.nu-front-dept{
+  font-size:10.5px;color:#555;text-align:center;
+}
+
+/* front footer */
+.nu-front-footer{
+  background:#fff;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:8px 12px 12px;
+  border-top:2px solid #1a3fa5;
+  flex-shrink:0;
+}
+.nu-sig-block{text-align:center;width:72px}
+.nu-sig-scribble{
+  height:26px;border-bottom:1.2px solid #444;
+  margin-bottom:3px;display:flex;
+  align-items:flex-end;justify-content:center;
+  font-family:cursive;font-size:13px;color:#333;
+  font-style:italic;padding-bottom:2px;overflow:hidden;
+}
+.nu-sig-label{font-size:8px;color:#333;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+.nu-qr{width:64px;height:64px;display:flex;align-items:center;justify-content:center}
+
+/* ════════════════════════════════════════════
+   BACK CARD
+════════════════════════════════════════════ */
+.nu-back-body{
+  padding:14px 16px 10px;
+  background:#fff;
+  flex:1;
+}
+.nu-back-row{
+  display:flex;align-items:flex-start;
+  margin-bottom:7px;font-size:11px;line-height:1.5;
+}
+.nu-back-label{width:128px;min-width:128px;font-weight:700;color:#111;font-size:11px}
+.nu-back-colon{margin-right:6px;font-weight:700;color:#111}
+.nu-back-value{flex:1;color:#222;font-size:11px;word-break:break-word}
+.nu-back-divider{height:1px;background:#c0cce0;margin:7px 0}
+.nu-back-footer{
+  background:linear-gradient(135deg,#1a3fa5,#1e55c4);
+  color:#fff;padding:10px 14px;
+  text-align:center;font-size:10px;font-style:italic;
+  line-height:1.7;font-weight:600;flex-shrink:0;
+}
+
+/* ── Detail grid + Comments ─────────────────── */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:4px}
+.comment-item{padding:var(--space-3) 0;border-bottom:1px solid var(--color-divider)}
+.comment-item:last-child{border-bottom:none}
+.comment-item.unread{background:var(--color-notification-highlight);border-radius:var(--radius-sm);padding:var(--space-3)}
+.comment-meta{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-1);flex-wrap:wrap}
+.comment-author{font-weight:700;font-size:var(--text-xs);color:var(--color-primary)}
+.comment-date{font-size:10px;color:var(--color-text-faint)}
+.comment-text{font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.5}
+
+/* Export toast */
+#exportToast{
+  position:fixed;bottom:24px;right:24px;
+  background:#1c1b19;color:#f9f8f5;
+  padding:12px 20px;border-radius:10px;
+  font-size:14px;z-index:9999;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  display:none;align-items:center;gap:10px;
+  transition:opacity .3s;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:720px){
+  .nu-id-wrapper{flex-direction:column}
+  .nu-card{width:100%;max-width:300px}
+  .detail-grid{grid-template-columns:1fr}
+  .action-bar{flex-wrap:wrap}
+}
+</style>
+
+<!-- ── Admin Action Bar ──────────────────────────────────────────── -->
+{% if session.role == 'admin' %}
+<div class="action-bar">
+  <a href="{{ url_for('edit_card', card_id=card[0]) }}" class="btn btn-secondary">
+    <i data-lucide="pencil" width="15" height="15"></i> Edit Card
+  </a>
+  <div class="export-btn-group">
+    <button id="dlPNG" class="btn btn-secondary"><i data-lucide="image" width="14" height="14"></i> PNG</button>
+    <button id="dlPDF" class="btn btn-secondary"><i data-lucide="file-text" width="14" height="14"></i> PDF</button>
+    <button id="dlEPS" class="btn btn-secondary" title="EPS — editable in Illustrator/Inkscape"><i data-lucide="vector" width="14" height="14"></i> EPS</button>
+    <button id="dlSVG" class="btn btn-secondary"><i data-lucide="pen-tool" width="14" height="14"></i> SVG</button>
+  </div>
+  <form method="POST" action="{{ url_for('delete_card', card_id=card[0]) }}"
+        onsubmit="return confirm('Permanently delete this ID card?')" style="margin:0">
+    <button type="submit" class="btn btn-danger">
+      <i data-lucide="trash-2" width="15" height="15"></i> Delete
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- ── ID Card Preview ───────────────────────────────────────────── -->
+<div class="preview-outer">
+  <div id="nu-id-wrapper" class="nu-id-wrapper">
+
+    <!-- ╔══════════════╗
+         ║  FRONT CARD  ║
+         ╚══════════════╝ -->
+    <div class="nu-card">
+
+      <!-- Blue header -->
+      <div class="nu-header">
+        <img class="nu-header-logo"
+             src="{{ url_for('static', filename='National_University,_Bangladesh_crest.svg') }}"
+             alt="NU Crest" width="52" height="52" crossorigin="anonymous">
+        <div class="nu-header-text">
+          <div class="nu-header-bangla">জাতীয় বিশ্ববিদ্যালয়</div>
+          <div class="nu-header-english">National University Bangladesh</div>
+        </div>
+      </div>
+
+      <!-- White spacer above photo -->
+      <div class="nu-front-white-top"></div>
+
+      <!-- Blue horizontal band with photo centred -->
+      <div class="nu-photo-row">
+        <div class="nu-photo-frame">
+          {% if card[11] %}
+            <img src="{{ card[11] }}" alt="{{ card[2] }}" width="110" height="130" crossorigin="anonymous">
+          {% else %}
+            <span class="nu-photo-initial">{{ card[2][0] | upper }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- White area: name / designation -->
+      <div class="nu-front-white-bottom">
+        <div class="nu-front-name">{{ card[2] }}</div>
+        <div class="nu-front-designation">{{ card[3] or '' }}</div>
+        <div class="nu-front-dept">{{ card[4] or '' }}</div>
+      </div>
+
+      <!-- White footer: sig | QR | sig -->
+      <div class="nu-front-footer">
+        <div class="nu-sig-block">
+          <div class="nu-sig-scribble">&#x09B8;&#x09CD;&#x09AC;&#x09BE;</div>
+          <div class="nu-sig-label">Card Holder</div>
+        </div>
+        <div class="nu-qr">
+          <!-- QR pattern matching sample -->
+          <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="#111">
+            <rect x="2" y="2" width="22" height="22" fill="none" stroke="#111" stroke-width="2.5"/>
+            <rect x="7" y="7" width="12" height="12"/>
+            <rect x="40" y="2" width="22" height="22" fill="none" stroke="#111" stroke-width="2.5"/>
+            <rect x="45" y="7" width="12" height="12"/>
+            <rect x="2" y="40" width="22" height="22" fill="none" stroke="#111" stroke-width="2.5"/>
+            <rect x="7" y="45" width="12" height="12"/>
+            <rect x="28" y="2" width="4" height="4"/><rect x="34" y="2" width="4" height="4"/>
+            <rect x="28" y="8" width="4" height="4"/><rect x="34" y="14" width="4" height="4"/>
+            <rect x="28" y="14" width="4" height="4"/>
+            <rect x="2" y="28" width="4" height="4"/><rect x="8" y="28" width="4" height="4"/>
+            <rect x="14" y="28" width="4" height="4"/><rect x="2" y="34" width="4" height="4"/>
+            <rect x="14" y="34" width="4" height="4"/>
+            <rect x="28" y="28" width="4" height="4"/><rect x="34" y="28" width="4" height="4"/>
+            <rect x="40" y="28" width="4" height="4"/><rect x="46" y="28" width="4" height="4"/>
+            <rect x="52" y="28" width="4" height="4"/><rect x="58" y="28" width="4" height="4"/>
+            <rect x="28" y="34" width="4" height="4"/><rect x="40" y="34" width="4" height="4"/>
+            <rect x="52" y="34" width="4" height="4"/><rect x="28" y="40" width="4" height="4"/>
+            <rect x="34" y="40" width="4" height="4"/><rect x="46" y="40" width="4" height="4"/>
+            <rect x="58" y="40" width="4" height="4"/><rect x="28" y="46" width="4" height="4"/>
+            <rect x="40" y="46" width="4" height="4"/><rect x="52" y="46" width="4" height="4"/>
+            <rect x="28" y="52" width="4" height="4"/><rect x="34" y="52" width="4" height="4"/>
+            <rect x="46" y="52" width="4" height="4"/><rect x="58" y="52" width="4" height="4"/>
+            <rect x="34" y="58" width="4" height="4"/><rect x="46" y="58" width="4" height="4"/>
+            <rect x="40" y="58" width="4" height="4"/><rect x="52" y="58" width="4" height="4"/>
+          </svg>
+        </div>
+        <div class="nu-sig-block">
+          <div class="nu-sig-scribble">&#x09B0;&#x09C7;&#x099C;&#x09BF;</div>
+          <div class="nu-sig-label">Registrar</div>
+        </div>
+      </div>
+
+    </div><!-- /front -->
+
+
+    <!-- ╔═════════════╗
+         ║  BACK CARD  ║
+         ╚═════════════╝ -->
+    <div class="nu-card">
+
+      <!-- Blue header -->
+      <div class="nu-header">
+        <img class="nu-header-logo"
+             src="{{ url_for('static', filename='National_University,_Bangladesh_crest.svg') }}"
+             alt="NU Crest" width="52" height="52" crossorigin="anonymous">
+        <div class="nu-header-text">
+          <div class="nu-header-bangla">জাতীয় বিশ্ববিদ্যালয়</div>
+          <div class="nu-header-english">National University Bangladesh</div>
+        </div>
+      </div>
+
+      <!-- Info table -->
+      <div class="nu-back-body">
+        <div class="nu-back-row">
+          <span class="nu-back-label">P.F. No.</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[1] }}</span>
+        </div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Name</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[2] }}</span>
+        </div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Designation</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[3] or '—' }}</span>
+        </div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Department</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[4] or '—' }}</span>
+        </div>
+        <div class="nu-back-divider"></div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Mobile No.</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[6] or '—' }}</span>
+        </div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Blood Group</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[7] or '—' }}</span>
+        </div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Present Address</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[10] or '—' }}</span>
+        </div>
+        <div class="nu-back-divider"></div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Emergency Contact</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ card[6] or '—' }}</span>
+        </div>
+        <div class="nu-back-row">
+          <span class="nu-back-label">Valid Up to</span>
+          <span class="nu-back-colon">:</span>
+          <span class="nu-back-value">{{ fmt_date(card[9]) }}</span>
+        </div>
+      </div>
+
+      <!-- Return notice footer -->
+      <div class="nu-back-footer">
+        <em><strong>If found, please return to the</strong><br>
+        Registrar, National University,<br>
+        Gazipur-1704, Bangladesh</em>
+      </div>
+
+    </div><!-- /back -->
+
+  </div><!-- /nu-id-wrapper -->
+</div><!-- /preview-outer -->
+
+<div id="exportToast"></div>
+
+<!-- ══ Employee Details + Comments ═══════════════════════════════ -->
+<div class="detail-grid">
+
+  <!-- Details panel -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size:var(--text-base);font-weight:700">Employee Details</h3>
+      <span class="badge {% if card[12] %}badge-active{% else %}badge-inactive{% endif %}">
+        {% if card[12] %}Active{% else %}Inactive{% endif %}
+      </span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        {% set fields = [
+          ('Employee ID', card[1]),('Full Name', card[2]),
+          ('Designation', card[3]),('Department', card[4]),
+          ('Email', card[5]),('Phone', card[6]),('Blood Group', card[7]),
+        ] %}
+        {% for label, value in fields %}
+        <div>
+          <div style="font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">{{ label }}</div>
+          <div style="font-size:var(--text-sm);font-weight:500;word-break:break-all">{{ value or '—' }}</div>
+        </div>
+        {% endfor %}
+        <div>
+          <div style="font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Date of Birth</div>
+          <div style="font-size:var(--text-sm);font-weight:500">{{ fmt_date(card[8]) }}</div>
+        </div>
+        <div>
+          <div style="font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Valid Upto</div>
+          <div style="font-size:var(--text-sm);font-weight:500">{{ fmt_date(card[9]) }}</div>
+        </div>
+      </div>
+      {% if card[10] %}
+      <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--color-divider)">
+        <div style="font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Present Address</div>
+        <div style="font-size:var(--text-sm)">{{ card[10] }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Comments panel -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-size:var(--text-base);font-weight:700;display:flex;align-items:center;gap:var(--space-2)">
+        <i data-lucide="message-square" width="16" height="16"></i>
+        Comments
+        <span style="font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted)">({{ comments|length }})</span>
+      </h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('add_comment', card_id=card[0]) }}"
+            style="margin-bottom:var(--space-5)">
+        <div class="form-group" style="margin-bottom:var(--space-3)">
+          <label class="form-label">Leave a Comment</label>
+          <textarea class="form-control" name="comment_text" rows="3"
+                    placeholder="Share a note or feedback…" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i data-lucide="send" width="14" height="14"></i> Submit Comment
+        </button>
+      </form>
+      {% if comments %}
+      <div style="border-top:1px solid var(--color-divider);padding-top:var(--space-4)">
+        {% for cm in comments %}
+        <div class="comment-item {% if session.role=='admin' and not cm[4] %}unread{% endif %}">
+          <div class="comment-meta">
+            <i data-lucide="user" width="12" height="12" style="color:var(--color-primary);flex-shrink:0"></i>
+            <span class="comment-author">{{ cm[1] }}</span>
+            <span class="comment-date">{{ fmt_datetime(cm[3]) }}</span>
+            {% if session.role=='admin' and not cm[4] %}
+            <span class="badge" style="background:var(--color-notification);color:#fff;font-size:9px;padding:1px 6px">NEW</span>
+            {% endif %}
+          </div>
+          <div class="comment-text">{{ cm[2] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:var(--space-8);color:var(--color-text-faint)">
+        <i data-lucide="message-circle" width="36" height="36" style="margin:0 auto var(--space-3);display:block"></i>
+        <p style="font-size:var(--text-sm)">No comments yet. Be the first to leave one!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div><!-- /detail-grid -->
+
+<div style="margin-top:var(--space-6)">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">
+    <i data-lucide="arrow-left" width="15" height="15"></i> Back to Dashboard
+  </a>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+function showToast(msg){
+  const t=document.getElementById('exportToast');
+  t.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+    style="animation:spin 1s linear infinite;flex-shrink:0"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>${msg}</span>`;
+  t.style.display='flex';t.style.opacity='1';
+}
+function hideToast(){
+  const t=document.getElementById('exportToast');
+  t.style.opacity='0';setTimeout(()=>t.style.display='none',350);
+}
+
+async function loadHtml2Canvas(){
+  if(window.html2canvas)return;
+  await new Promise((res,rej)=>{const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+}
+async function loadJsPDF(){
+  if(window.jspdf)return;
+  await new Promise((res,rej)=>{const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+}
+async function captureCard(scale){
+  await loadHtml2Canvas();
+  const el=document.getElementById('nu-id-wrapper');
+  if(!el)throw new Error('Card wrapper #nu-id-wrapper not found');
+  return html2canvas(el,{
+    scale:scale||3,useCORS:true,allowTaint:true,
+    backgroundColor:'#f7f6f2',logging:false,
+    onclone:(doc)=>{doc.querySelectorAll('img').forEach(img=>{img.crossOrigin='anonymous';});}
+  });
+}
+
+document.getElementById('dlPNG')?.addEventListener('click',async()=>{
+  showToast('Generating PNG…');
+  try{
+    const c=await captureCard(3);
+    c.toBlob(b=>{const a=document.createElement('a');
+      a.href=URL.createObjectURL(b);
+      a.download='id_card_{{ card[2]|replace(" ","_") }}.png';a.click();hideToast();},'image/png');
+  }catch(e){hideToast();alert('PNG failed: '+e.message);}
+});
+
+document.getElementById('dlPDF')?.addEventListener('click',async()=>{
+  showToast('Generating PDF…');
+  try{
+    await loadJsPDF();
+    const c=await captureCard(3);
+    const d=c.toDataURL('image/png');
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();
+    const ratio=c.height/c.width;
+    const printW=Math.min(pw-20,240),printH=printW*ratio;
+    doc.addImage(d,'PNG',(pw-printW)/2,(ph-printH)/2,printW,printH);
+    doc.save('id_card_{{ card[2]|replace(" ","_") }}.pdf');hideToast();
+  }catch(e){hideToast();alert('PDF failed: '+e.message);}
+});
+
+document.getElementById('dlSVG')?.addEventListener('click',async()=>{
+  showToast('Generating SVG…');
+  try{
+    const c=await captureCard(2);
+    const d=c.toDataURL('image/png');
+    const w=c.width,h=c.height;
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <title>ID Card - {{ card[2] }}</title>
+  <image href="${d}" x="0" y="0" width="${w}" height="${h}"/>
+</svg>`;
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+    a.download='id_card_{{ card[2]|replace(" ","_") }}.svg';a.click();hideToast();
+  }catch(e){hideToast();alert('SVG failed: '+e.message);}
+});
+
+document.getElementById('dlEPS')?.addEventListener('click',async()=>{
+  showToast('Generating EPS — please wait…');
+  try{
+    const c=await captureCard(4);
+    const ctx=c.getContext('2d');
+    const pxW=c.width,pxH=c.height;
+    const ptW=Math.round(pxW*72/96),ptH=Math.round(pxH*72/96);
+    const data=ctx.getImageData(0,0,pxW,pxH).data;
+    let hex='';
+    for(let y=0;y<pxH;y++){
+      let row='';
+      for(let x=0;x<pxW;x++){
+        const i=(y*pxW+x)*4;
+        row+=data[i].toString(16).padStart(2,'0')
+            +data[i+1].toString(16).padStart(2,'0')
+            +data[i+2].toString(16).padStart(2,'0');
+      }
+      for(let j=0;j<row.length;j+=72)hex+=row.slice(j,j+72)+'\n';
+    }
+    const eps=`%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 ${ptW} ${ptH}
+%%HiResBoundingBox: 0 0 ${ptW} ${ptH}
+%%Title: ID Card - {{ card[2] }}
+%%Creator: National University ID Card System
+%%CreationDate: ${new Date().toUTCString()}
+%%LanguageLevel: 2
+%%EndComments
+%%BeginProlog
+/pix ${pxW} 3 mul string def
+%%EndProlog
+%%Page: 1 1
+gsave
+${ptW} ${ptH} scale
+${pxW} ${pxH} 8
+[${pxW} 0 0 -${pxH} 0 ${pxH}]
+{currentfile pix readhexstring pop}
+false 3
+colorimage
+${hex}
+grestore
+showpage
+%%Trailer
+%%EOF`;
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([eps],{type:'application/postscript'}));
+    a.download='id_card_{{ card[2]|replace(" ","_") }}.eps';a.click();hideToast();
+  }catch(e){hideToast();alert('EPS failed: '+e.message);}
+});
+
+lucide.createIcons();
+</script>
+{% endblock %}

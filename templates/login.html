@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+{% block title %}Login — NU ID Card System{% endblock %}
+
+{% block auth_content %}
+<style>
+
+body { overflow: hidden; }
+
+.auth-shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ─── LEFT: Brand Panel ─── */
+.auth-brand {
+  background: linear-gradient(155deg,
+    var(--color-primary-active) 0%,
+    var(--color-primary) 50%,
+    color-mix(in oklch, var(--color-primary) 65%, var(--color-blue)) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-10);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated decorative rings */
+.auth-brand::before,
+.auth-brand::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+.auth-brand::before {
+  width: 480px; height: 480px;
+  border: 1px solid rgba(255,255,255,.09);
+  top: -160px; left: -160px;
+  animation: ring-spin 35s linear infinite;
+}
+.auth-brand::after {
+  width: 320px; height: 320px;
+  border: 1px solid rgba(255,255,255,.06);
+  bottom: -100px; right: -100px;
+  animation: ring-spin 22s linear infinite reverse;
+}
+
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+
+.brand-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%,
+    rgba(255,255,255,.10) 0%,
+    transparent 65%);
+  pointer-events: none;
+}
+
+.brand-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-6);
+  animation: slide-up .8s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo badge */
+.brand-logo-wrap {
+  position: relative;
+}
+.brand-logo-glow {
+  position: absolute;
+  inset: -12px;
+  background: radial-gradient(circle, rgba(255,255,255,.20) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%,100% { opacity: .6; transform: scale(1); }
+  50%      { opacity: 1;  transform: scale(1.08); }
+}
+
+.brand-logo-ring {
+  position: relative;
+  width: 128px; height: 128px;
+  border-radius: 32px;
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255,255,255,.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-shadow:
+    0 24px 48px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  transition: transform .4s cubic-bezier(0.16,1,0.3,1),
+              box-shadow .4s ease;
+}
+.brand-logo-ring:hover {
+  transform: scale(1.04) translateY(-2px);
+  box-shadow: 0 32px 56px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.28);
+}
+.brand-logo-ring img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.18));
+}
+
+/* Brand text */
+.brand-name {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 1rem + 1.6vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.15;
+  color: #fff;
+  letter-spacing: -.02em;
+}
+.brand-tagline {
+  font-size: var(--text-sm);
+  color: rgba(255,255,255,.78);
+  max-width: 26ch;
+  line-height: 1.65;
+}
+
+/* Feature pills */
+.brand-pills {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 270px;
+  margin-top: var(--space-1);
+}
+.brand-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,.92);
+  font-weight: 500;
+  animation: slide-up .8s cubic-bezier(0.16,1,0.3,1) both;
+}
+.brand-pill:nth-child(1) { animation-delay: .18s; }
+.brand-pill:nth-child(2) { animation-delay: .28s; }
+.brand-pill:nth-child(3) { animation-delay: .38s; }
+.brand-pill-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.85);
+  flex-shrink: 0;
+}
+
+/* ─── RIGHT: Form Panel ─── */
+.auth-form-panel {
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-10);
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Subtle grid texture on form side */
+.auth-form-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--color-divider) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-divider) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: .35;
+  pointer-events: none;
+}
+
+.auth-form-wrap {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  animation: slide-in-right .7s cubic-bezier(0.16,1,0.3,1) .08s both;
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Eyebrow badge */
+.form-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-primary-highlight);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.form-eyebrow-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: dot-pulse 2.2s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%,100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.45); opacity: .65; }
+}
+.form-eyebrow-text {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.form-heading {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.15;
+  margin-bottom: var(--space-2);
+}
+.form-sub {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-8);
+  line-height: 1.65;
+}
+
+/* Inputs */
+.field-group { margin-bottom: var(--space-5); }
+
+.field-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: var(--space-2);
+}
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.forgot-link {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  opacity: .9;
+  transition: opacity var(--transition);
+}
+.forgot-link:hover { opacity: 1; text-decoration: underline; }
+
+.input-wrap { position: relative; }
+.input-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  pointer-events: none;
+  transition: color var(--transition);
+}
+.input-wrap:focus-within .input-icon { color: var(--color-primary); }
+
+.auth-input {
+  width: 100%;
+  padding: 0.75rem var(--space-3) 0.75rem 2.65rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  transition: border-color var(--transition),
+              background var(--transition),
+              box-shadow var(--transition);
+}
+.auth-input::placeholder { color: var(--color-text-faint); }
+.auth-input:hover { border-color: var(--color-primary-highlight); }
+.auth-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-surface-2);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-primary) 14%, transparent);
+}
+
+/* Submit button */
+.btn-signin {
+  width: 100%;
+  padding: 0.8rem var(--space-5);
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 4px 14px color-mix(in oklch, var(--color-primary) 40%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.15);
+  transition: background var(--transition),
+              transform .2s cubic-bezier(0.16,1,0.3,1),
+              box-shadow .2s ease;
+}
+.btn-signin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-signin:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1.5px);
+  box-shadow:
+    0 8px 22px color-mix(in oklch, var(--color-primary) 45%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.btn-signin:active { transform: translateY(0); }
+.btn-arrow {
+  transition: transform .25s cubic-bezier(0.16,1,0.3,1);
+}
+.btn-signin:hover .btn-arrow { transform: translateX(4px); }
+
+/* Divider */
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-6) 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+}
+.form-divider::before,
+.form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-divider);
+}
+
+/* Status strip */
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-6);
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-highlight);
+  flex-shrink: 0;
+  animation: dot-pulse 2.8s ease-in-out infinite;
+}
+.status-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-success);
+}
+.status-desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+  margin-top: 1px;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: var(--space-8);
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+/* ─── Dark mode tweaks ─── */
+[data-theme="dark"] .auth-brand {
+  background: linear-gradient(155deg,
+    oklch(0.20 0.055 200) 0%,
+    oklch(0.26 0.065 192) 52%,
+    oklch(0.24 0.060 210) 100%);
+}
+[data-theme="dark"] .brand-logo-ring {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.14);
+}
+[data-theme="dark"] .auth-form-panel::before { opacity: .18; }
+
+/* ─── Mobile ─── */
+@media (max-width: 768px) {
+  body { overflow: auto; }
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+  .auth-brand {
+    min-height: 240px;
+    padding: var(--space-8) var(--space-6);
+  }
+  .auth-brand::before,
+  .auth-brand::after { display: none; }
+  .brand-pills { display: none; }
+  .brand-logo-ring { width: 88px; height: 88px; border-radius: 22px; }
+  .brand-name { font-size: var(--text-lg); }
+  .auth-form-panel { padding: var(--space-8) var(--space-5); }
+  .auth-form-wrap { max-width: 100%; }
+}
+
+</style>
+
+<div class="auth-shell">
+
+  <!-- ═══ LEFT: Brand ═══ -->
+  <div class="auth-brand">
+    <div class="brand-glow"></div>
+    <div class="brand-inner">
+
+      <div class="brand-logo-wrap">
+        <div class="brand-logo-glow"></div>
+        <div class="brand-logo-ring">
+          <img
+            src="{{ url_for('static', filename='National_University,_Bangladesh_crest.svg') }}"
+            alt="National University of Bangladesh crest"
+            width="96" height="96"
+            onerror="this.outerHTML='<svg width=&quot;64&quot; height=&quot;64&quot; viewBox=&quot;0 0 64 64&quot; fill=&quot;none&quot;><circle cx=&quot;32&quot; cy=&quot;32&quot; r=&quot;28&quot; stroke=&quot;rgba(255,255,255,.6)&quot; stroke-width=&quot;2&quot;/><text x=&quot;32&quot; y=&quot;40&quot; text-anchor=&quot;middle&quot; font-size=&quot;22&quot; font-weight=&quot;700&quot; fill=&quot;white&quot; font-family=&quot;sans-serif&quot;>NU</text></svg>'"
+          >
+        </div>
+      </div>
+
+      <div>
+        <div class="brand-name">National University<br>of Bangladesh</div>
+        <div class="brand-tagline" style="margin-top:var(--space-2)">Official ID Card Management Portal for Students &amp; Staff</div>
+      </div>
+
+      <div class="brand-pills">
+        <div class="brand-pill"><span class="brand-pill-dot"></span> Secure Digital ID Cards</div>
+        <div class="brand-pill"><span class="brand-pill-dot"></span> Real-time Status Tracking</div>
+        <div class="brand-pill"><span class="brand-pill-dot"></span> Admin &amp; Student Portals</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT: Login Form ═══ -->
+  <main class="auth-form-panel">
+    <div class="auth-form-wrap">
+
+      <div class="form-eyebrow">
+        <span class="form-eyebrow-dot"></span>
+        <span class="form-eyebrow-text">Secure Portal</span>
+      </div>
+
+      <h1 class="form-heading">Welcome back</h1>
+      <p class="form-sub">Sign in to manage National University ID cards.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="margin-bottom:var(--space-4);border-radius:var(--radius-lg);">
+            <i data-lucide="{% if category=='success' %}check-circle{% elif category=='error' %}alert-circle{% else %}info{% endif %}" width="16" height="16"></i>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" novalidate>
+
+        <!-- Username -->
+        <div class="field-group">
+          <label class="field-label" for="username">Username / Student ID</label>
+          <div class="input-wrap">
+            <input class="auth-input" type="text" id="username" name="username"
+                   placeholder="Enter your username or student ID"
+                   required autofocus autocomplete="username">
+            <i data-lucide="user" class="input-icon" width="16" height="16"></i>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="field-group">
+          <div class="field-label-row">
+            <label class="field-label" for="password">Password</label>
+            <a href="#" class="forgot-link">Forgot password?</a>
+          </div>
+          <div class="input-wrap">
+            <input class="auth-input" type="password" id="password" name="password"
+                   placeholder="Enter your password"
+                   required autocomplete="current-password">
+            <i data-lucide="lock" class="input-icon" width="16" height="16"></i>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-signin">
+          Sign In
+          <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+
+      </form>
+
+      <div class="form-divider">NU ID Card System</div>
+
+      <div class="status-strip">
+        <span class="status-dot"></span>
+        <div>
+          <div class="status-label">All systems operational</div>
+          <div class="status-desc">NU ID Card Portal &middot; Secure connection</div>
+        </div>
+      </div>
+
+      <p class="auth-footer">&copy; 2026 National University of Bangladesh</p>
+
+    </div>
+  </main>
+
+</div>
+{% endblock %}

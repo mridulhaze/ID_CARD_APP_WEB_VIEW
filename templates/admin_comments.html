@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Comments Inbox{% endblock %}
+{% block page_title %}Comments Inbox{% endblock %}
+{% block content %}
+{% if comments %}
+<div class="card" style="overflow:hidden">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Commented By</th>
+        <th>Comment</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for cm in comments %}
+    <tr>
+      <td>
+        <div>
+          <div style="font-weight:600;font-size:var(--text-sm)">{{ cm[5] }}</div>
+          <code style="font-size:10px;color:var(--color-text-muted)">{{ cm[6] }}</code>
+        </div>
+      </td>
+      <td>
+        <span style="font-weight:600;color:var(--color-primary)">{{ cm[1] }}</span>
+      </td>
+      <td style="max-width:320px">
+        <span style="font-size:var(--text-sm);color:var(--color-text-muted)">{{ cm[2][:120] }}{% if cm[2]|length > 120 %}…{% endif %}</span>
+      </td>
+      <td style="white-space:nowrap;font-size:var(--text-xs);color:var(--color-text-muted)">
+        {{ cm[3].strftime('%d %b %Y') if cm[3] else '' }}
+      </td>
+      <td>
+        {% if not cm[4] %}
+        <span class="badge" style="background:var(--color-notification);color:#fff">New</span>
+        {% else %}
+        <span class="badge badge-inactive">Read</span>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('view_card', card_id=cm[7]) }}" class="btn btn-ghost btn-sm">
+          <i data-lucide="eye" width="13" height="13"></i> View Card
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:var(--space-16)">
+  <i data-lucide="inbox" width="48" height="48" style="color:var(--color-text-faint);margin:0 auto var(--space-4)"></i>
+  <h3 style="color:var(--color-text-muted)">No comments yet</h3>
+  <p style="color:var(--color-text-faint);font-size:var(--text-sm)">User comments will appear here.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ID Card System{% endblock %}
+{% block page_title %}Employee ID Cards{% endblock %}
+
+{% block content %}
+
+{# ── KPI Cards (Admin only) ──────────────────────────────────────────────── #}
+{% if session.role == 'admin' %}
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#e6f4f4;color:#01696f">
+      <i data-lucide="credit-card" width="20" height="20"></i>
+    </div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ cards|length }}</div>
+      <div class="kpi-label">TOTAL CARDS</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#e8f5e2;color:#437a22">
+      <i data-lucide="check-circle" width="20" height="20"></i>
+    </div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpiActive">0</div>
+      <div class="kpi-label">ACTIVE</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fdeee6;color:#964219">
+      <i data-lucide="x-circle" width="20" height="20"></i>
+    </div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpiInactive">0</div>
+      <div class="kpi-label">INACTIVE</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fce8ea;color:#a13544">
+      <i data-lucide="message-circle" width="20" height="20"></i>
+    </div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ unread_count }}</div>
+      <div class="kpi-label">UNREAD COMMENTS</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Toolbar ──────────────────────────────────────────────────────────────── #}
+<div class="dash-toolbar">
+  <div class="search-wrap">
+    <i data-lucide="search" width="15" height="15" class="search-icon"></i>
+    <input type="text" id="searchInput" class="form-control search-input"
+           placeholder="Search name, ID, department…">
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <select id="deptFilter" class="form-control" style="width:auto;min-width:150px">
+      <option value="">All Departments</option>
+      {% set depts = [] %}
+      {% for c in cards %}
+        {% if c[4] and c[4] not in depts %}
+          {% set _ = depts.append(c[4]) %}
+        {% endif %}
+      {% endfor %}
+      {% for d in depts|sort %}
+        <option value="{{ d|lower }}">{{ d }}</option>
+      {% endfor %}
+    </select>
+
+    <select id="statusFilter" class="form-control" style="width:auto;min-width:120px">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+
+    {% if session.role == 'admin' %}
+    <button class="btn btn-secondary btn-sm" id="exportCSVBtn">
+      <i data-lucide="file-spreadsheet" width="14" height="14"></i> CSV
+    </button>
+    <button class="btn btn-secondary btn-sm" id="exportExcelBtn">
+      <i data-lucide="table-2" width="14" height="14"></i> Excel
+    </button>
+    <button class="btn btn-secondary btn-sm" id="exportPDFBtn">
+      <i data-lucide="file-text" width="14" height="14"></i> PDF
+    </button>
+    <a href="{{ url_for('new_card') }}" class="btn btn-primary btn-sm">
+      <i data-lucide="plus" width="14" height="14"></i> New Card
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ── View toggle ──────────────────────────────────────────────────────────── #}
+<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:16px">
+  <button class="view-toggle active" id="viewGridBtn" onclick="setView('grid')">
+    <i data-lucide="layout-grid" width="16" height="16"></i>
+  </button>
+  <button class="view-toggle" id="viewListBtn" onclick="setView('list')">
+    <i data-lucide="list" width="16" height="16"></i>
+  </button>
+</div>
+
+{# ── Card Grid View ───────────────────────────────────────────────────────── #}
+{% if cards %}
+<div id="cardGrid" class="card-grid">
+  {% for c in cards %}
+  <div class="emp-card"
+       data-name="{{ c[2]|lower }}"
+       data-empid="{{ c[1]|lower }}"
+       data-dept="{{ (c[4] or '')|lower }}"
+       data-status="{{ 'active' if c[6] else 'inactive' }}">
+    <div class="emp-card-header">
+      <div class="emp-avatar">
+        {% if c[7] %}
+          <img src="{{ c[7] }}" alt="{{ c[2] }}" width="48" height="48" loading="lazy">
+        {% else %}
+          {{ c[2][0].upper() }}
+        {% endif %}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="emp-name">{{ c[2] }}</div>
+        <div class="emp-desig">{{ c[3] or '—' }}</div>
+      </div>
+      <span class="badge {{ 'badge-active' if c[6] else 'badge-inactive' }}">
+        {{ 'Active' if c[6] else 'Inactive' }}
+      </span>
+    </div>
+    <div class="emp-meta">
+      <span class="emp-meta-item"><i data-lucide="hash" width="11" height="11"></i>{{ c[1] }}</span>
+      <span class="emp-meta-item"><i data-lucide="building-2" width="11" height="11"></i>{{ c[4] or '—' }}</span>
+      {% if c[5] %}
+      <span class="emp-meta-item blood-badge"><i data-lucide="droplets" width="11" height="11"></i>{{ c[5] }}</span>
+      {% endif %}
+    </div>
+    <div class="emp-card-actions">
+      <a href="{{ url_for('view_card', card_id=c[0]) }}" class="btn btn-ghost btn-sm" style="flex:1">
+        <i data-lucide="eye" width="13" height="13"></i> View
+      </a>
+      {% if session.role == 'admin' %}
+      <a href="{{ url_for('edit_card', card_id=c[0]) }}" class="btn btn-secondary btn-sm" style="flex:1">
+        <i data-lucide="pencil" width="13" height="13"></i> Edit
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── List/Table View ──────────────────────────────────────────────────────── #}
+<div id="cardList" style="display:none">
+  <div class="card" style="overflow:hidden">
+    <table class="data-table" id="cardsTable">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>ID</th>
+          <th>Designation</th>
+          <th>Department</th>
+          <th>Blood</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in cards %}
+        <tr data-name="{{ c[2]|lower }}"
+            data-empid="{{ c[1]|lower }}"
+            data-dept="{{ (c[4] or '')|lower }}"
+            data-status="{{ 'active' if c[6] else 'inactive' }}">
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="table-avatar">
+                {% if c[7] %}
+                  <img src="{{ c[7] }}" alt="{{ c[2] }}" width="32" height="32" loading="lazy">
+                {% else %}
+                  {{ c[2][0].upper() }}
+                {% endif %}
+              </div>
+              <span style="font-weight:600">{{ c[2] }}</span>
+            </div>
+          </td>
+          <td><code style="font-size:12px;background:var(--color-surface-offset);padding:2px 6px;border-radius:4px">{{ c[1] }}</code></td>
+          <td style="color:var(--color-text-muted)">{{ c[3] or '—' }}</td>
+          <td style="color:var(--color-text-muted)">{{ c[4] or '—' }}</td>
+          <td>
+            {% if c[5] %}
+            <span class="badge" style="background:#fce8ea;color:#a12c7b">{{ c[5] }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if c[6] %}
+            <span class="badge badge-active"><i data-lucide="check" width="10" height="10"></i> Active</span>
+            {% else %}
+            <span class="badge badge-inactive">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="{{ url_for('view_card', card_id=c[0]) }}" class="btn btn-ghost btn-sm">
+                <i data-lucide="eye" width="14" height="14"></i> View
+              </a>
+              {% if session.role == 'admin' %}
+              <a href="{{ url_for('edit_card', card_id=c[0]) }}" class="btn btn-secondary btn-sm">
+                <i data-lucide="pencil" width="14" height="14"></i> Edit
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── No results message ───────────────────────────────────────────────────── #}
+<div id="emptySearch" style="display:none;text-align:center;padding:64px 16px">
+  <i data-lucide="search-x" width="40" height="40" style="color:var(--color-text-faint);margin:0 auto 16px"></i>
+  <h3 style="color:var(--color-text-muted);margin-bottom:8px">No results found</h3>
+  <p style="color:var(--color-text-faint);font-size:14px">Try adjusting your search or filters.</p>
+</div>
+
+{% else %}
+<div style="text-align:center;padding:64px 16px">
+  <i data-lucide="credit-card" width="48" height="48" style="color:var(--color-text-faint);margin:0 auto 16px"></i>
+  <h3 style="color:var(--color-text-muted);margin-bottom:8px">No ID cards found</h3>
+  {% if session.role == 'admin' %}
+  <a href="{{ url_for('new_card') }}" class="btn btn-primary" style="margin-top:16px">Create the first card</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Styles ───────────────────────────────────────────────────────────────── #}
+<style>
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-sm);transition:box-shadow .18s}
+.kpi-card:hover{box-shadow:var(--shadow-md)}
+.kpi-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kpi-value{font-size:clamp(1.5rem,2vw,2.25rem);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.kpi-label{font-size:11px;color:var(--color-text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.06em}
+.dash-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:220px;max-width:360px}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-faint);pointer-events:none}
+.search-input{padding-left:36px !important}
+.view-toggle{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--color-text-muted);border:1px solid var(--color-border);background:var(--color-surface);cursor:pointer;transition:all .18s}
+.view-toggle.active,.view-toggle:hover{background:var(--color-primary-highlight);color:var(--color-primary);border-color:var(--color-primary-highlight)}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:24px}
+.emp-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow-sm);transition:box-shadow .18s,transform .18s}
+.emp-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.emp-card-header{display:flex;align-items:center;gap:12px}
+.emp-avatar{width:48px;height:48px;border-radius:10px;background:var(--color-primary-highlight);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;overflow:hidden}
+.emp-avatar img{width:100%;height:100%;object-fit:cover}
+.emp-name{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emp-desig{font-size:12px;color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emp-meta{display:flex;flex-wrap:wrap;gap:6px}
+.emp-meta-item{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--color-text-muted);background:var(--color-surface-offset);padding:2px 7px;border-radius:999px}
+.blood-badge{background:#fce8ea !important;color:#a13544 !important}
+.emp-card-actions{display:flex;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid var(--color-divider)}
+.table-avatar{width:32px;height:32px;border-radius:8px;background:var(--color-primary-highlight);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden}
+.table-avatar img{width:100%;height:100%;object-fit:cover}
+.badge-active{background:#e8f5e2;color:#437a22}
+.badge-inactive{background:#f3f0ec;color:#7a7974}
+@media(max-width:600px){.kpi-row{grid-template-columns:1fr 1fr}.card-grid{grid-template-columns:1fr}.dash-toolbar{flex-direction:column;align-items:stretch}}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Update KPI counters ───────────────────────────────────────────────────────
+(function(){
+  let active=0, inactive=0;
+  document.querySelectorAll('.emp-card').forEach(c=>{
+    c.dataset.status==='active' ? active++ : inactive++;
+  });
+  const a=document.getElementById('kpiActive');
+  const i=document.getElementById('kpiInactive');
+  if(a) a.textContent=active;
+  if(i) i.textContent=inactive;
+})();
+
+// ── Filter function (search + dept + status) ──────────────────────────────────
+function filterCards(){
+  const q  = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const dept   = (document.getElementById('deptFilter').value || '').toLowerCase();
+  const status = (document.getElementById('statusFilter').value || '').toLowerCase();
+
+  let visible = 0;
+
+  // Grid cards
+  document.querySelectorAll('#cardGrid .emp-card').forEach(card => {
+    const name   = card.dataset.name   || '';
+    const empid  = card.dataset.empid  || '';
+    const cdept  = card.dataset.dept   || '';
+    const cstat  = card.dataset.status || '';
+
+    const matchQ      = !q      || name.includes(q) || empid.includes(q) || cdept.includes(q);
+    const matchDept   = !dept   || cdept === dept;
+    const matchStatus = !status || cstat === status;
+
+    const show = matchQ && matchDept && matchStatus;
+    card.style.display = show ? '' : 'none';
+    if(show) visible++;
+  });
+
+  // Table rows
+  document.querySelectorAll('#cardsTable tbody tr').forEach(row => {
+    const name   = row.dataset.name   || '';
+    const empid  = row.dataset.empid  || '';
+    const cdept  = row.dataset.dept   || '';
+    const cstat  = row.dataset.status || '';
+
+    const matchQ      = !q      || name.includes(q) || empid.includes(q) || cdept.includes(q);
+    const matchDept   = !dept   || cdept === dept;
+    const matchStatus = !status || cstat === status;
+
+    row.style.display = (matchQ && matchDept && matchStatus) ? '' : 'none';
+  });
+
+  // Show/hide empty state
+  const empty = document.getElementById('emptySearch');
+  if(empty) empty.style.display = visible === 0 ? 'block' : 'none';
+}
+
+document.getElementById('searchInput')?.addEventListener('input',  filterCards);
+document.getElementById('deptFilter')?.addEventListener('change',  filterCards);
+document.getElementById('statusFilter')?.addEventListener('change', filterCards);
+
+// ── View toggle ───────────────────────────────────────────────────────────────
+function setView(v){
+  document.getElementById('cardGrid').style.display = v==='grid' ? '' : 'none';
+  document.getElementById('cardList').style.display = v==='list' ? '' : 'none';
+  document.getElementById('viewGridBtn').classList.toggle('active', v==='grid');
+  document.getElementById('viewListBtn').classList.toggle('active', v==='list');
+  lucide.createIcons();
+}
+
+// ── Get visible rows for export ───────────────────────────────────────────────
+function getVisibleRows(){
+  // Make sure the list view exists; temporarily show it to read data
+  const listEl = document.getElementById('cardList');
+  const wasHidden = listEl.style.display === 'none';
+  if(wasHidden){ listEl.style.display=''; lucide.createIcons(); }
+
+  const headers = ['Employee ID','Full Name','Designation','Department','Blood Group','Status'];
+  const rows = [headers];
+
+  document.querySelectorAll('#cardsTable tbody tr').forEach(tr => {
+    if(tr.style.display === 'none') return;
+    const tds = tr.querySelectorAll('td');
+    rows.push([
+      tds[1]?.querySelector('code')?.textContent?.trim() || '',
+      tds[0]?.querySelector('span')?.textContent?.trim() || '',
+      tds[2]?.textContent?.trim() || '',
+      tds[3]?.textContent?.trim() || '',
+      tds[4]?.textContent?.trim() || '',
+      tds[5]?.textContent?.trim() || ''
+    ]);
+  });
+
+  if(wasHidden) listEl.style.display='none';
+  return rows;
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+document.getElementById('exportCSVBtn')?.addEventListener('click', () => {
+  const rows = getVisibleRows();
+  const csv  = rows.map(r => r.map(c => '"'+(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'id_cards_export.csv';
+  a.click();
+});
+
+// ── Excel Export ──────────────────────────────────────────────────────────────
+document.getElementById('exportExcelBtn')?.addEventListener('click', async () => {
+  const rows = getVisibleRows();
+  if(!window.XLSX){
+    const s = document.createElement('script');
+    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    document.head.appendChild(s);
+    await new Promise(r => s.onload = r);
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = rows[0].map(() => ({wch: 22}));
+  // Bold header row
+  rows[0].forEach((_,i) => {
+    const cell = ws[XLSX.utils.encode_cell({r:0, c:i})];
+    if(cell) cell.s = {font:{bold:true}};
+  });
+  XLSX.utils.book_append_sheet(wb, ws, 'ID Cards');
+  XLSX.writeFile(wb, 'id_cards_export.xlsx');
+});
+
+// ── PDF Export ────────────────────────────────────────────────────────────────
+document.getElementById('exportPDFBtn')?.addEventListener('click', async () => {
+  const rows = getVisibleRows();
+  if(!window.jspdf){
+    const s1 = document.createElement('script');
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    document.head.appendChild(s1);
+    await new Promise(r => s1.onload = r);
+    const s2 = document.createElement('script');
+    s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    document.head.appendChild(s2);
+    await new Promise(r => s2.onload = r);
+  }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+  doc.setFontSize(16);
+  doc.text('ID Card System — Employee Export', 14, 16);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text('Generated: ' + new Date().toLocaleString(), 14, 23);
+  doc.autoTable({
+    head: [rows[0]],
+    body: rows.slice(1),
+    startY: 28,
+    styles: {fontSize: 9, cellPadding: 3},
+    headStyles: {fillColor: [1,105,111], textColor: 255, fontStyle: 'bold'},
+    alternateRowStyles: {fillColor: [247, 246, 242]}
+  });
+  doc.save('id_cards_export.pdf');
+});
+
+lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+{% block page_title %}User Management{% endblock %}
+{% block content %}
+<div class="card" style="overflow:hidden">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Joined</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+    <tr>
+      <td style="color:var(--color-text-faint);font-size:var(--text-xs)">{{ u[0] }}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <div style="width:32px;height:32px;border-radius:var(--radius-full);background:var(--color-primary-highlight);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--text-xs)">
+            {{ u[1][0]|upper }}
+          </div>
+          <span style="font-weight:600">{{ u[1] }}</span>
+        </div>
+      </td>
+      <td>
+        <span class="badge {% if u[2]=='admin' %}badge-admin{% else %}badge-user{% endif %}">
+          {{ u[2]|capitalize }}
+        </span>
+      </td>
+      <td style="font-size:var(--text-xs);color:var(--color-text-muted)">
+        {{ u[3].strftime('%d %b %Y') if u[3] else '—' }}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
